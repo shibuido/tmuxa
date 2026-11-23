@@ -7,19 +7,62 @@
 #     tmux attach <flags> -t <selected-session>
 #
 # Usage examples:
-#   tmuxa            # equivalent to: tmux attach -t <session>
-#   tmuxa -t         # same as above
-#   tmuxa -dt        # tmux attach -dt <session>
-#   tmuxa -h|--help  # show this help
+#   tmuxa              # equivalent to: tmux attach -t <session>
+#   tmuxa -t           # same as above
+#   tmuxa -dt          # tmux attach -dt <session>
+#   tmuxa -q work      # open the finder with "work" pre-filled as the query
+#   tmuxa -d --query=w # flags and query can be combined, in any order
+#   tmuxa -h|--help    # show this help
 #
-# Any flags supplied are forwarded to `tmux attach`.  If they do not already
-# include “-t/--target”, the flag “-t” is added automatically.
+# tmuxa's own options (removed before forwarding, so tmux never sees them):
+#   -q, --query QUERY  start the finder with QUERY typed in (like sk/fzf -q).
+#                      Also: -qQUERY, --query=QUERY.  Must be a standalone
+#                      argument, not combined into a flag cluster like -dq.
+#                      Without sk/fzf, the select menu is narrowed to
+#                      sessions containing QUERY (case-insensitive).
+#
+# Any other flags are forwarded to `tmux attach`.  If they do not already
+# include "-t/--target", the flag "-t" is added automatically.
 set -euo pipefail
 IFS=$'\n\t'
 
 print_help() {
-    # Print usage block above (lines 4-18)
-    sed -n '4,18p' "$0"
+    # Print the comment block above, from line 3 up to `set -euo pipefail`.
+    sed -n '3,/^set -euo pipefail/{/^set -euo/d;s/^# \{0,1\}//;p}' "$0"
+}
+
+# Initial finder query, set by -q/--query in main().
+QUERY=""
+
+# Let the user pick one of the given items and print it (empty if cancelled).
+# Items come as arguments, not on stdin, so the `select` fallback can still
+# read the user's answer from the terminal.
+# Usage: pick <prompt> <menu-title> <item>...
+pick() {
+    local prompt=$1 title=$2 choice="" query_opt=()
+    shift 2
+    local items=("$@")
+    [[ -n $QUERY ]] && query_opt=(--query="$QUERY")
+
+    if command -v sk >/dev/null 2>&1; then
+        choice="$(printf '%s\n' "${items[@]}" | sk --prompt="$prompt" "${query_opt[@]}")"
+    elif command -v fzf >/dev/null 2>&1; then
+        choice="$(printf '%s\n' "${items[@]}" | fzf --prompt="$prompt" "${query_opt[@]}")"
+    else
+        if [[ -n $QUERY ]]; then
+            mapfile -t items < <(printf '%s\n' "${items[@]}" | grep -iF -- "$QUERY" || true)
+            if (( ${#items[@]} == 0 )); then
+                echo "No tmux sessions match query: $QUERY" >&2
+                exit 1
+            fi
+        fi
+        echo "$title" >&2
+        select choice in "${items[@]}"; do
+            [[ -n $choice ]] && break
+            echo "Invalid selection." >&2
+        done
+    fi
+    printf '%s\n' "$choice"
 }
 
 # Select a tmux session and output its name
@@ -32,17 +75,7 @@ select_session() {
         exit 1
     fi
 
-    if command -v sk >/dev/null 2>&1; then
-        session_name="$(printf '%s\n' "${sessions[@]}" | sk --prompt='tmux session> ')"
-    elif command -v fzf >/dev/null 2>&1; then
-        session_name="$(printf '%s\n' "${sessions[@]}" | fzf --prompt='tmux session> ')"
-    else
-        echo "Select a session:"
-        select session_name in "${sessions[@]}"; do
-            [[ -n $session_name ]] && break
-            echo "Invalid selection."
-        done
-    fi
+    session_name="$(pick 'tmux session> ' 'Select a session:' "${sessions[@]}")" || exit $?
 
     if [[ -z $session_name ]]; then
         echo "No session selected." >&2
@@ -74,18 +107,8 @@ select_server_and_session() {
         exit 1
     fi
 
-    local choice=""
-    if command -v sk >/dev/null 2>&1; then
-        choice="$(printf '%s\n' "${items[@]}" | sk --prompt='tmux server:session> ')"
-    elif command -v fzf >/dev/null 2>&1; then
-        choice="$(printf '%s\n' "${items[@]}" | fzf --prompt='tmux server:session> ')"
-    else
-        echo "Select a server and session:"
-        select choice in "${items[@]}"; do
-            [[ -n $choice ]] && break
-            echo "Invalid selection."
-        done
-    fi
+    local choice
+    choice="$(pick 'tmux server:session> ' 'Select a server and session:' "${items[@]}")" || exit $?
 
     if [[ -z $choice ]]; then
         echo "No selection made." >&2
@@ -96,7 +119,23 @@ select_server_and_session() {
 }
 
 main() {
-    local attach_flags=("$@")
+    # Pull out tmuxa's own -q/--query before anything is forwarded to tmux.
+    # This must happen before the -t detection below: "-qtest" would
+    # otherwise look like a combined flag containing -t.
+    local attach_flags=()
+    while (( $# > 0 )); do
+        case $1 in
+            -q|--query)
+                if (( $# < 2 )); then
+                    echo "tmuxa: $1 needs a value" >&2
+                    exit 2
+                fi
+                QUERY=$2; shift 2 ;;
+            --query=*) QUERY=${1#--query=}; shift ;;
+            -q?*)      QUERY=${1#-q};       shift ;;
+            *)         attach_flags+=("$1"); shift ;;
+        esac
+    done
 
     # Help handling
     if [[ ${#attach_flags[@]} -gt 0 ]]; then
