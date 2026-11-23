@@ -7,7 +7,7 @@ Tmuxa enhances tmux session management by providing an interactive session selec
 ## Key Features
 
 - **🔍 Fuzzy Finding** - Uses sk/fzf for lightning-fast session selection
-- **🎯 Pre-filled Query** - `-q`/`--query` starts the finder already filtered, like `sk -q`
+- **🎯 Pre-filled Query** - `-q`/`--query` starts the finder already filtered, like `sk -q`; a single match attaches directly
 - **🖥️ Multi-Server Support** - Handles multiple tmux servers seamlessly  
 - **⌨️ Smart Defaults** - Automatically adds `-t` flag when needed
 - **🔧 Flag Forwarding** - All tmux attach flags supported
@@ -23,7 +23,7 @@ chmod +x tmuxa && mv tmuxa ~/bin/
 tmuxa                    # Interactive session selection
 tmuxa -d                 # Attach, detaching other clients
 tmuxa -dt                # Combined flags
-tmuxa -q work            # Finder opens with "work" already typed
+tmuxa -q work            # Finder opens with "work" typed; one match attaches directly
 ```
 
 ## Example Workflow

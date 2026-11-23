@@ -139,6 +139,10 @@ $ tmuxa
 works like `sk -q` and `fzf -q`: the list starts narrowed, you can still edit
 the query, and you still press Enter to choose.
 
+**If exactly one session matches, tmuxa attaches to it straight away**, without
+showing the finder (it passes `--select-1` to sk/fzf). So `tmuxa -q medic`
+goes directly to the only session matching "medic".
+
 ```bash
 tmuxa -q work            # finder opens with "work" typed in
 tmuxa --query work       # same
@@ -158,8 +162,9 @@ Rules:
 * `-q` with no value is an error (exit 2). If `-q` appears twice, the last one
   wins.
 * Without sk or fzf, the `select` menu shows only sessions whose name contains
-  `QUERY`, ignoring case. This is a plain substring match, not fuzzy. If none
-  match, tmuxa prints `No tmux sessions match query: QUERY` and exits 1.
+  `QUERY`, ignoring case. This is a plain substring match, not fuzzy. One
+  match attaches directly. If none match, tmuxa prints
+  `No tmux sessions match query: QUERY` and exits 1.
 
 ## Fuzzy Finder Integration
 
@@ -242,7 +247,7 @@ tmuxa --help             # Show help and usage information
 | Option | Meaning |
 |--------|---------|
 | `-h`, `--help`, `help` | Show help and exit. Must be the first argument. |
-| `-q QUERY`, `--query QUERY`, `-qQUERY`, `--query=QUERY` | Start the finder with `QUERY` typed in. Removed before forwarding. See [Pre-filling the Query](#pre-filling-the-query). |
+| `-q QUERY`, `--query QUERY`, `-qQUERY`, `--query=QUERY` | Start the finder with `QUERY` typed in; a single match attaches directly. Removed before forwarding. See [Pre-filling the Query](#pre-filling-the-query). |
 
 ### Flag Forwarding Rules
 

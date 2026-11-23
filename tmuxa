@@ -16,6 +16,8 @@
 #
 # tmuxa's own options (removed before forwarding, so tmux never sees them):
 #   -q, --query QUERY  start the finder with QUERY typed in (like sk/fzf -q).
+#                      If exactly one session matches, attach to it right
+#                      away without showing the finder.
 #                      Also: -qQUERY, --query=QUERY.  Must be a standalone
 #                      argument, not combined into a flag cluster like -dq.
 #                      Without sk/fzf, the select menu is narrowed to
@@ -42,7 +44,8 @@ pick() {
     local prompt=$1 title=$2 choice="" query_opt=()
     shift 2
     local items=("$@")
-    [[ -n $QUERY ]] && query_opt=(--query="$QUERY")
+    # With a query, a single match is taken without showing the finder.
+    [[ -n $QUERY ]] && query_opt=(--query="$QUERY" --select-1)
 
     if command -v sk >/dev/null 2>&1; then
         choice="$(printf '%s\n' "${items[@]}" | sk --prompt="$prompt" "${query_opt[@]}")"
@@ -54,6 +57,10 @@ pick() {
             if (( ${#items[@]} == 0 )); then
                 echo "No tmux sessions match query: $QUERY" >&2
                 exit 1
+            fi
+            if (( ${#items[@]} == 1 )); then
+                printf '%s\n' "${items[0]}"
+                return 0
             fi
         fi
         echo "$title" >&2
