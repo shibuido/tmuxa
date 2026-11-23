@@ -63,9 +63,9 @@ sudo dnf install tmux
 tmuxa
 
 # Attach with specific flags
-tmuxa -d        # detached mode
-tmuxa -dt       # detached with target
-tmuxa -x 120    # set terminal width
+tmuxa -d        # detach other clients from the session
+tmuxa -dt       # same, combined form
+tmuxa -r        # read-only
 
 # Start the finder with a query already typed in
 tmuxa -q work
@@ -103,17 +103,20 @@ $ tmuxa
 All `tmux attach` flags are supported:
 
 ```bash
-# Detached mode
+# Take the session over: detach every other client
 tmuxa -d
 
-# Set specific terminal dimensions
-tmuxa -x 120 -y 40
+# Same, and send SIGHUP to the other clients' parent shells
+tmuxa -x
 
-# Force attach (steal from other clients)
-tmuxa -d
+# Read-only client
+tmuxa -r
+
+# Start the session in a given working directory
+tmuxa -c ~/project
 
 # Combined flags work naturally
-tmuxa -dt    # detached + target (auto-added)
+tmuxa -dt    # detach others + target (session appended after -t)
 ```
 
 ### Multi-Server Scenarios
@@ -228,7 +231,7 @@ Tmuxa properly handles tmux server sockets:
 
 ```bash
 tmuxa                    # Interactive selection with default flags
-tmuxa -d                 # Interactive selection, detached mode
+tmuxa -d                 # Interactive selection, detach other clients
 tmuxa -dt                # Interactive selection, detached + target
 tmuxa -q work            # Interactive selection, query pre-filled
 tmuxa --help             # Show help and usage information

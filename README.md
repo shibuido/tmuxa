@@ -21,7 +21,7 @@ chmod +x tmuxa && mv tmuxa ~/bin/
 
 # Basic usage
 tmuxa                    # Interactive session selection
-tmuxa -d                 # Attach in detached mode  
+tmuxa -d                 # Attach, detaching other clients
 tmuxa -dt                # Combined flags
 tmuxa -q work            # Finder opens with "work" already typed
 ```
