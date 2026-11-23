@@ -7,6 +7,7 @@ Tmuxa is an interactive tmux session selector that enhances the `tmux attach` wo
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Usage Examples](#usage-examples)
+- [Pre-filling the Query](#pre-filling-the-query)
 - [Fuzzy Finder Integration](#fuzzy-finder-integration)
 - [Multi-Server Support](#multi-server-support)
 - [Command Reference](#command-reference)
@@ -65,6 +66,9 @@ tmuxa
 tmuxa -d        # detached mode
 tmuxa -dt       # detached with target
 tmuxa -x 120    # set terminal width
+
+# Start the finder with a query already typed in
+tmuxa -q work
 
 # Get help
 tmuxa --help
@@ -125,6 +129,34 @@ $ tmuxa
 #   ubertmux:development
 #   custom-server:project-x
 ```
+
+## Pre-filling the Query
+
+`-q QUERY` / `--query QUERY` opens the finder with `QUERY` already typed in. It
+works like `sk -q` and `fzf -q`: the list starts narrowed, you can still edit
+the query, and you still press Enter to choose.
+
+```bash
+tmuxa -q work            # finder opens with "work" typed in
+tmuxa --query work       # same
+tmuxa --query=work       # same
+tmuxa -qwork             # same
+tmuxa -d -q work         # combine with attach flags, in any order
+tmuxa -q work -d         # same
+tmuxa -q 'ubertmux:'     # with several servers, narrow to one server
+```
+
+Rules:
+
+* `-q` belongs to tmuxa. It is removed before the remaining flags go to
+  `tmux attach`, so tmux never sees it. (`tmux attach` has no `-q` of its own.)
+* Give it as its own argument. A cluster like `-dq work` is not split apart;
+  write `-d -q work`.
+* `-q` with no value is an error (exit 2). If `-q` appears twice, the last one
+  wins.
+* Without sk or fzf, the `select` menu shows only sessions whose name contains
+  `QUERY`, ignoring case. This is a plain substring match, not fuzzy. If none
+  match, tmuxa prints `No tmux sessions match query: QUERY` and exits 1.
 
 ## Fuzzy Finder Integration
 
@@ -198,8 +230,16 @@ Tmuxa properly handles tmux server sockets:
 tmuxa                    # Interactive selection with default flags
 tmuxa -d                 # Interactive selection, detached mode
 tmuxa -dt                # Interactive selection, detached + target
+tmuxa -q work            # Interactive selection, query pre-filled
 tmuxa --help             # Show help and usage information
 ```
+
+### tmuxa's Own Options
+
+| Option | Meaning |
+|--------|---------|
+| `-h`, `--help`, `help` | Show help and exit. Must be the first argument. |
+| `-q QUERY`, `--query QUERY`, `-qQUERY`, `--query=QUERY` | Start the finder with `QUERY` typed in. Removed before forwarding. See [Pre-filling the Query](#pre-filling-the-query). |
 
 ### Flag Forwarding Rules
 
@@ -269,11 +309,18 @@ tmuxa
 
 ### Custom Session Filtering
 
-Use with external tools for advanced filtering:
+Start with the list already narrowed:
 
 ```bash
-# Show only sessions matching pattern (external tool example)
-tmux ls | grep "dev\|work" | cut -d: -f1 | fzf | xargs tmux attach -t
+tmuxa -q dev             # finder starts filtered to "dev"
+```
+
+sk and fzf read their usual query syntax, so `-q` accepts it too:
+
+```bash
+tmuxa -q "'work"         # names containing exactly "work" (no fuzzy matching)
+tmuxa -q '^dev'          # sessions whose name starts with "dev"
+tmuxa -q 'dev | work'    # "dev" or "work"
 ```
 
 ### Integration with Session Managers
@@ -394,7 +441,8 @@ sudo chown $USER:$USER /tmp/tmux-$UID/*
 ### Exit Codes
 
 - `0` - Success (attached to session)
-- `1` - No sessions found
+- `1` - No sessions found, or none match `-q` (select-menu fallback only)
+- `2` - `-q`/`--query` given without a value
 - `3` - No session selected (user cancelled)
 
 ### Performance Characteristics
